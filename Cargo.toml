@@ -1,6 +1,6 @@
 [package]
 name = "sxlang"
 version = "0.1.0"
-authors = ["Maitre Van Diest", "Delthas"]
+authors = ["Maitre Van Diest", "Delthas", "Emersion"]
 
 [dependencies]
