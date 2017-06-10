@@ -1,4 +1,9 @@
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
+
+#[allow(dead_code)]
+mod lexer;
+#[allow(dead_code)]
+mod token;
 
 fn main() {
     match run() {
