@@ -59,12 +59,6 @@ i[2..5] renvoie une portion du tableau (pas une copie)
 i[..2], i[0..] valide
 i[2..$-2] valide
 
-Types primitifs
-b
-i-, i (32bit) i+ (64BITE)
-u-, u, u+
-f, f+
-
 Expressions littérales
 32 32i- 32i+ 32b 32u 32u- 32u+ 32.0f 32.45454f+
 Faire attention à 1f+ + 3
