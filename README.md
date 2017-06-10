@@ -36,6 +36,7 @@ si c'est une méthode (pas statique) d'une classe :
 x := a i b i ->% {
     
 }
+et dans ce cas le "this" est % : %.a correspond à this.a en Java
 
 Allocation
 Tableaux : taille compile time -> pile ; taille pas compile time
