@@ -39,7 +39,7 @@ x := a i b i ->% {
 
 Allocation
 Tableaux : taille compile time -> pile ; taille pas compile time
-Classes : si pas mut et hérite de rien -> pile ; sinon tas
+Classes : si final et hérite de rien -> pile ; sinon tas
 Le reste : pile
 
 Passage
@@ -78,8 +78,8 @@ Toutes les lvalue sont immutables, sauf contre-indiqué par #, e.g. #x := 5. L'i
 Classes
 <nom> = ${
 }
-si c mutable : <nom> := #$ {}
-si on extend : <nom> := $truc{}
+si c final : <nom> := #$ {}
+si on peut extend : <nom> := $truc{}
 
 Interfaces
 <nom> = #${
