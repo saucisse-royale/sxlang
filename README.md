@@ -84,7 +84,7 @@ Interfaces
 }
 
 Opérateurs
-+ ++ += - -- -= * *= / /= // //= % %= [] <opérateur itération>
++ ++ += - -- -= * *= / /= % %= [] <opérateur itération>
 peuvent être overridés
 
 EXEMPLE: L'Algorithme D'Euclide
