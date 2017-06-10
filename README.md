@@ -73,7 +73,7 @@ Classes
 <nom> = ${
 }
 si c final : <nom> := #$ {}
-si on peut extend : <nom> := $truc{}
+si on extend les interfaces truc et troc : <nom> := $truc troc{}
 
 Interfaces
 <nom> = #${
