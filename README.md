@@ -17,7 +17,7 @@ Commentaires
 /* */
 
 Flux de contrôle
-(expression booléenne) ? {} ?: (expression booléenne) : (expression booléenne)
+(expression booléenne) ? {} (expression booléenne) ?: {} : {}
 
 Boucles
 @ (expression booléenne) {}
