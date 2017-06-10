@@ -46,10 +46,10 @@ Passage
 Tout est passé par pointeur sauf les primitifs, mais on peut copy et clone avec ~a et ~~a. On peut clone et copy dans les paramètres de fonction, etc.
 
 Primitifs
-b
-i-, i, i+
-u-, u, u+
-f, f+
+b (1 byte)
+i- (signed int 2 bytes), i (signed int 4 bytes), i+ (signed int 8 bytes)
+u- (unsigned int 2 bytes), u (unsigned int 4 bytes), u+ (unsigned int 8 bytes)
+f (float 4 bytes), f+ (float 8 bytes)
 
 Tableaux
 Le type se note i[]
