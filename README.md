@@ -71,13 +71,13 @@ Immutabilité
 Toutes les lvalue sont immutables, sauf contre-indiqué par #, e.g. #x := 5. L'immutabilité est transitive et valide pour toute la durée de vie du truc (pas seulement pour le scope).
 
 Classes
-<nom> = ${
+<nom> := ${
 }
 si c final : <nom> := #$ {}
 si on extend les interfaces truc et troc : <nom> := $truc troc{}
 
 Interfaces
-<nom> = #${
+<nom> := #${
     // que des fonctions du style :
     f := a i b i -> sava
     // sava est le type de retour
