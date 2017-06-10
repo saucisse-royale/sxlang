@@ -32,7 +32,7 @@ Fonctions
 x := a i b i -> {
     
 }
-si c'est une méthode d'une classe :
+si c'est une méthode (pas statique) d'une classe :
 x := a i b i ->% {
     
 }
