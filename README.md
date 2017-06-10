@@ -3,7 +3,7 @@
 The official interpreter for the Ŝlang language. Written in Rust.
 
 # Spécification de sxlang
-
+```
 Déclaration de variable
 x := _
 Initialisation de variable
@@ -101,3 +101,4 @@ f := a i b i -> {
           § f(b_, a%b_)   
     }
 }
+```
