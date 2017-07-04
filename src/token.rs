@@ -5,6 +5,7 @@ pub enum Token {
     KeyWord,
     Identifier,
     Litteral(String),
+    // TODO implement different types of numeric values
     Integer(i32),
 
     LeftParenthesis,
@@ -25,6 +26,8 @@ pub enum Token {
     DoubleDot, // ..
     Quote, // "
     Backslash, // \
+    Tilda, // ~
+    DoubleTilda, // ~~
 
     // Binary operators
     Plus,
@@ -37,4 +40,6 @@ pub enum Token {
     Or,
     Shl,
     Shr,
+    LessThan,
+    GreaterThan,
 }

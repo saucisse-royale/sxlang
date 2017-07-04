@@ -20,6 +20,7 @@ impl<'a> Lexer<'a> {
                 '§' => Some(Token::Paragraph),
                 '?' => Some(Token::QuestionMark),
                 '#' => Some(Token::Hash),
+                '%' => Some(Token::Percent),
 
                 ':' => {
                     if self.is_next_char('=') {
@@ -27,6 +28,38 @@ impl<'a> Lexer<'a> {
                         return Some(Token::ColonEqual);
                     }
                     Some(Token::Illegal)
+                }
+
+                '<' => {
+                    if self.is_next_char('<') {
+                        self.input.next();
+                        return Some(Token::Shl);
+                    }
+                    Some(Token::LessThan)
+                }
+
+                '>' => {
+                    if self.is_next_char('>') {
+                        self.input.next();
+                        return Some(Token::Shr);
+                    }
+                    Some(Token::GreaterThan)
+                }
+
+                '~' => {
+                    if self.is_next_char('~') {
+                        self.input.next();
+                        return Some(Token::DoubleTilda);
+                    }
+                    Some(Token::Tilda)
+                }
+
+                '.' => {
+                    if self.is_next_char('.') {
+                        self.input.next();
+                        return Some(Token::DoubleDot);
+                    }
+                    Some(Token::Dot)
                 }
 
                 ' ' | '\n' | '\t' | '\r' => self.next_token(),
