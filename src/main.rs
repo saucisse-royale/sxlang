@@ -6,9 +6,8 @@ mod lexer;
 mod token;
 
 fn main() {
-    match run() {
-        Ok(_) => {}
-        Err(err) => println!("{:?}", err),
+    if let Err(err) = run() {
+        println!("{:?}", err);
     }
 }
 
