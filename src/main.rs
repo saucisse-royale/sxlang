@@ -2,9 +2,12 @@ extern crate clap;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate nom;
 
 use clap::{App, Arg};
-use std::io::{self, Write};
+use std::io::{self, Write, Read};
+use std::fs::File;
 
 #[allow(dead_code)]
 mod lexer;
@@ -20,58 +23,46 @@ fn main() {
         .name("sxlang")
         .author("Maitre Van Diest, Delthas, (emersion xd)")
         .about("The Ŝ programming language")
-        .arg(
-            Arg::with_name("interpret")
-                .short("i")
-                .long("interpret")
-                .help("Use sxlang in interpreter mode."),
-        )
-        .arg(
-            Arg::with_name("compile")
-                .short("c")
-                .long("compile")
-                .help("Use sxlang in compiler mode.")
-                .conflicts_with("interpret")
-                .requires("INPUT_FILES"),
-        )
-        .arg(Arg::with_name("INPUT_FILES").multiple(true).help(
-            "The files to interpret/compile",
+        .arg(Arg::with_name("INPUT_FILES").required(true).multiple(true).help(
+            "The files to compile",
         ))
         .get_matches();
 
-    if matches.is_present("interpret") {
-        info!("Interpreter mode.");
-        if let Err(err) = interpret() {
-            println!("{:?}", err);
-        }
-    } else {
-        info!("Compiler mode.");
-        if let Err(err) = compile() {
-            println!("{:?}", err);
-        }
+    if let Err(err) = compile(matches.values_of("INPUT_FILES").unwrap().collect()) {
+        println!("{:?}", err);
     }
 }
 
-fn interpret() -> io::Result<()> {
-    let stdin = io::stdin();
+fn compile(files : Vec<&str>) -> io::Result<()> {
+    let mut declarations = Vec::new();
 
-    loop {
-        print!("Ŝ>> ");
-        io::stdout().flush()?;
-
-        let mut line = String::new();
-        stdin.read_line(&mut line)?;
-
-        loop {
-            // process input
-            // break at EOF
-            unimplemented!()
-        }
+    for string in files {
+        println!("Parsing file {} ...", string);
+        let mut bytes = Vec::new();
+        File::open(string)?.read_to_end(&mut bytes)?;
+        declarations.append(&mut parse_file(&bytes[..]));
+        println!("Parsed file {} successfully!", string);
     }
-
-    // Ok(())
+    Ok(())
 }
 
-fn compile() -> io::Result<()> {
+fn parse_file(bytes : &[u8]) -> Vec<Declaration> {
     unimplemented!()
 }
+
+enum Declaration {
+    Type {
+        id: String,
+        unoverridable: bool,
+        extends: Vec<String>,
+        body: Vec<Declaration>,
+    },
+    Function {
+        id: String,
+        // ...
+    },
+    Variable {
+
+    },
+}
+
