@@ -4,10 +4,13 @@ extern crate env_logger;
 extern crate log;
 #[macro_use]
 extern crate nom;
+extern crate regex;
 
 use clap::{App, Arg};
 use std::io::{self, Write, Read};
 use std::fs::File;
+use std::str;
+use nom::{anychar, alphanumeric};
 
 #[allow(dead_code)]
 mod lexer;
@@ -33,21 +36,84 @@ fn main() {
     }
 }
 
-fn compile(files : Vec<&str>) -> io::Result<()> {
+fn compile(files: Vec<&str>) -> io::Result<()> {
     let mut declarations = Vec::new();
 
     for string in files {
         println!("Parsing file {} ...", string);
         let mut bytes = Vec::new();
         File::open(string)?.read_to_end(&mut bytes)?;
-        declarations.append(&mut parse_file(&bytes[..]));
+        let mut result = file(&bytes[..]).to_result().unwrap();
+        declarations.append(&mut result);
         println!("Parsed file {} successfully!", string);
     }
     Ok(())
 }
 
-fn parse_file(bytes : &[u8]) -> Vec<Declaration> {
-    unimplemented!()
+named!(file<&[u8], Vec<Declaration> >, many0!(ws!(declaration)));
+
+named!(declaration<&[u8], Declaration>, alt!(type_declaration | function_declaration | variable_declaration));
+
+named!(type_declaration<&[u8], Declaration>, do_parse!(
+    id: map_res!(call!(upper_id), String::from_utf8)
+ >> tag!(":=")
+ >> unoverridable: map!(opt!(tag!("#")), Option::is_some)
+ >> tag!("$")
+ >> extends: many0!(map_res!(call!(upper_id), String::from_utf8))
+ >> tag!("{")
+ >> body: many0!(alt!(function_declaration | variable_declaration))
+ >> tag!("}")
+ >> (Declaration::Type{id: id, unoverridable: unoverridable, extends: extends, body: Box::new(body)})
+));
+
+named!(function_declaration<&[u8], Declaration>, do_parse!(
+    id: map_res!(call!(lower_id), String::from_utf8)
+ >> tag!(":=")
+ >> parameters: many0!(parameter)
+ >> tag!("->")
+ >> instance: map!(opt!(tag!("%")), Option::is_some)
+ >> body_or_return_type: alt!(
+        map!(opt!(type_), |type_:Type| FunctionBodyOrReturnType::Type{type_})
+      | map!(opt!(do_parse!(
+            tag!("{")
+         >> statements: many0!(function_statement)
+         >> tag!("}")
+         >> (statements)
+        )), |body:Body| FunctionBodyOrReturnType::Body{body}))
+ >> (Declaration::Function{id: id, parameters: parameters, instance: instance,
+    return_type: match body_or_return_type {Type{type_} => Some(type_), _ => None},
+    body: match body_or_return_type {Body(body) => Some(body), _ => None}})
+));
+
+named!(variable_declaration<&[u8], Declaration>, do_parse!(
+    mutable: opt!(tag!("#"))
+ >> id: map_res!(call!(any_id), String::from_utf8)
+ >> value: alt!(
+        map!(tag!("_"), |_| None)
+      | expression)
+ >> (Declaration::Variable{id: id, mutable: mutable, value: value})
+));
+
+named!(upper_id, recognize!(do_parse!(
+    verify!(call!(anychar), |c| c >= 'A' && c <= 'Z')
+ >> call!(alphanumeric)
+ >> ()
+)));
+
+named!(lower_id, recognize!(do_parse!(
+    verify!(call!(anychar), |c| c >= 'a' && c <= 'z')
+ >> call!(alphanumeric)
+ >> ()
+)));
+
+named!(any_id, recognize!(do_parse!(
+    call!(alphanumeric)
+ >> ()
+)));
+
+enum FunctionBodyOrReturnType {
+    Body(Body),
+    ReturnType(Type),
 }
 
 enum Declaration {
@@ -61,13 +127,13 @@ enum Declaration {
         id: String,
         parameters: Vec<Parameter>,
         instance: bool,
+        return_type: Option<Type>,
         body: Option<Body>,
-        return_type: Type,
     },
     Variable {
         id: String,
         mutable: bool,
-        value: Option<Statement>,
+        value: Option<Expression>,
     },
 }
 
@@ -226,3 +292,5 @@ enum Primitive {
     Float32,
     Float64,
 }
+
+
