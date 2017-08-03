@@ -55,14 +55,174 @@ enum Declaration {
         id: String,
         unoverridable: bool,
         extends: Vec<String>,
-        body: Vec<Declaration>,
+        body: Body,
     },
     Function {
         id: String,
-        // ...
+        parameters: Vec<Parameter>,
+        instance: bool,
+        body: Option<Body>,
+        return_type: Type,
     },
     Variable {
-
+        id: String,
+        mutable: bool,
+        value: Option<Statement>,
     },
 }
 
+enum Statement {
+    If(Vec<IfBlock>),
+    While {
+        condition: Expression,
+        body: Body,
+    },
+    For {
+        variable: String,
+        iterable: Expression,
+        body: Body,
+    },
+    Return(Expression),
+    Continue(u32),
+    Break(u32),
+    Expression(Expression),
+}
+
+struct IfBlock {
+    condition: Option<Expression>,
+    body: Body,
+}
+
+enum Expression {
+    Literal(Literal),
+    Class(String),
+    Function(String),
+    Variable(String),
+    This,
+    ArrayLength,
+    Method {
+        base: Box<Expression>,
+        method: String,
+    },
+    Field {
+        base: Box<Expression>,
+        field: String,
+    },
+    Array {
+        base: Box<Expression>,
+        index: Box<Expression>,
+    },
+    FunctionCall {
+        base: Box<Expression>,
+        parameters: Box<Expressions>,
+    },
+    UnaryOp {
+        base: Box<Expression>,
+        op: UnaryOp,
+    },
+    BinaryOp {
+        left: Box<Expression>,
+        right: Box<Expression>,
+        op: BinaryOp,
+    },
+}
+
+enum Literal {
+    ArrayLiteral {
+        array_type: Option<BaseType>,
+        body: ArrayLiteralBody,
+    },
+    StringLiteral(String),
+    NumberLiteral {
+        number: String,
+        number_type: Primitive,
+    }
+}
+
+enum ArrayLiteralBody {
+    Count {
+        count: u32,
+        value: Option<String>,
+    },
+    Values(Vec<String>),
+}
+
+type Expressions = Vec<Expression>;
+type Body = Box<Vec<Statement>>;
+
+enum ParameterOption {
+    Value,
+    Copy,
+    Clone,
+}
+
+struct Parameter {
+    parameter_type: Type,
+    option: ParameterOption,
+}
+
+struct Type {
+    base_type: BaseType,
+    array : bool,
+}
+
+enum BaseType {
+    Primitive(Primitive),
+    Class(String),
+}
+
+enum BinaryOp {
+    Multplication,
+    Division,
+    Modulo,
+    Addition,
+    Subtraction,
+    LessThan,
+    LessEqualThan,
+    GreaterThan,
+    GreaterEqualThan,
+    Equals,
+    NotEquals,
+    ShiftLeft,
+    ShiftRight,
+    ShiftLogicalRight,
+    BitAnd,
+    BitXor,
+    BitOr,
+    And,
+    Or,
+    Assign,
+    AssignAddition,
+    AssignSubtraction,
+    AssignMultiplication,
+    AssignDivision,
+    AssignModulo,
+    AssignBitAnd,
+    AssignBitOr,
+    AssignBitXor,
+    AssignShiftLeft,
+    AssignShiftRight,
+    AssignShiftLogicalRight,
+}
+
+enum UnaryOp {
+    PostIncrement,
+    PostDecrement,
+    PreIncrement,
+    PreDecrement,
+    PrePlus,
+    PreMinus,
+    Not,
+}
+
+enum Primitive {
+    Byte,
+    UInt16,
+    UInt32,
+    UInt64,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+}
