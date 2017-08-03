@@ -73,26 +73,128 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
  >> tag!("->")
  >> instance: map!(opt!(tag!("%")), Option::is_some)
  >> body_or_return_type: alt!(
-        map!(opt!(type_), |type_:Type| FunctionBodyOrReturnType::Type{type_})
+        map!(opt!(type_), |type_:Type| FunctionBodyOrReturnType::ReturnType(type_))
       | map!(opt!(do_parse!(
             tag!("{")
          >> statements: many0!(function_statement)
          >> tag!("}")
          >> (statements)
-        )), |body:Body| FunctionBodyOrReturnType::Body{body}))
+        )), |body:Body| FunctionBodyOrReturnType::Body(body)))
  >> (Declaration::Function{id: id, parameters: parameters, instance: instance,
-    return_type: match body_or_return_type {Type{type_} => Some(type_), _ => None},
-    body: match body_or_return_type {Body(body) => Some(body), _ => None}})
+    return_type: match body_or_return_type {FunctionBodyOrReturnType::ReturnType(type_) => Some(type_), _ => None},
+    body: match body_or_return_type {FunctionBodyOrReturnType::Body(body) => Some(body), _ => None}})
 ));
 
 named!(variable_declaration<&[u8], Declaration>, do_parse!(
-    mutable: opt!(tag!("#"))
+    mutable: map!(opt!(tag!("#")), Option::is_some)
  >> id: map_res!(call!(any_id), String::from_utf8)
  >> value: alt!(
         map!(tag!("_"), |_| None)
       | expression)
  >> (Declaration::Variable{id: id, mutable: mutable, value: value})
 ));
+
+named!(parameter<&[u8], Parameter>, do_parse!(
+    id: map!(any_id, String::from_utf8)
+ >> option: map!(many_m_n!(0, 2, tag!("~")), |v| v.len())
+ >> type_: type_
+ >> (Parameter{id: id, parameter_type: type_, option: match option {2 => ParameterOption::Clone, 1 => ParameterOption::Copy, _ => ParameterOption::Value}})
+));
+
+named!(type_<&[u8], Type>, do_parse!(
+    base_type: alt!(
+        map!(tag!("b"), |e| BaseType::Primitive(Primitive::Byte(e)))
+      | map!(tag!("i-"), |e| BaseType::Primitive(Primitive::Int16(e)))
+      | map!(tag!("i+"), |e| BaseType::Primitive(Primitive::Int64(e)))
+      | map!(tag!("i"), |e| BaseType::Primitive(Primitive::Int32(e)))
+      | map!(tag!("u-"), |e| BaseType::Primitive(Primitive::UInt16(e)))
+      | map!(tag!("u+"), |e| BaseType::Primitive(Primitive::UInt64(e)))
+      | map!(tag!("u"), |e| BaseType::Primitive(Primitive::UInt32(e)))
+      | map!(tag!("f+"), |e| BaseType::Primitive(Primitive::Float64(e)))
+      | map!(tag!("f"), |e| BaseType::Primitive(Primitive::Float32(e)))
+      | map!(upper_id, |e| BaseType::String(String::from_utf8(e)))
+    )
+ >> array: map!(opt!(tag!("[]")), Option::is_some)
+ >> (Type{base_type: base_type, array: array})
+));
+
+named!(expression<&[u8], Expression>, alt!(
+    do_parse!(
+        tag!("(")
+     >> expression: expression
+     >> tag!(")")
+     >> (expression)
+    )
+  | // TODO: add other expression cases
+));
+
+named!(function_statement<&[u8], Statement>, alt!(
+    if_statement
+  | while_statement
+  | for_statement
+  | do_parse!(
+        tag!("§")
+     >> expression: expression
+     >> (Statement::Return(expression))
+    )
+  | do_parse!(
+        continues: many1!(tag!(">"))
+     >> (Statement::Continue(continues.len()))
+    )
+  | do_parse!(
+        breaks: many1!(tag!("<"))
+     >> (Statement::Break(breaks.len()))
+    )
+  | do_parse!(
+        expression: expression
+     >> (Statement::Expression(expression))
+    )
+));
+
+named!(if_statement<&[u8], Statement>, do_parse!(
+    condition: expression
+ >> tag!("?")
+ >> tag!("{")
+ >> statements: many0!(function_statement)
+ >> tag!("}")
+ >> nextStatements: many0!(do_parse!(
+        condition: expression
+     >> tag!("?:")
+     >> tag!("{")
+     >> statements: many0!(function_statement)
+     >> tag!("}")
+     >> (IfBlock{condition: condition, body: Box::new(statements)})
+    ))
+ >> end: opt!(do_parse!(
+        tag!(":")
+     >> tag!("{")
+     >> statements: many0!(function_statement)
+     >> tag!("}")
+     >> (IfBlock{condition: None, body: Box::new(statements)})
+    ))
+ >> (Statement::If([IfBlock{condition: condition, body: Box::new(statements)}].iter().chain(nextStatements).chain(end).collect()))
+));
+
+named!(while_statement<&[u8], Statement>, do_parse!(
+    tag!("@")
+ >> condition: expression
+ >> tag!("{")
+ >> statements: many0!(function_statement)
+ >> tag!("}")
+ >> (Statement::While{condition: condition, body: Box::new(statements)})
+));
+
+named!(for_statement<&[u8], Statement>, do_parse!(
+    tag!("@")
+ >> variable: map!(any_id, String::from_utf8)
+ >> tag!(":")
+ >> iterable: expression
+ >> tag!("{")
+ >> statements: many0!(function_statement)
+ >> tag!("}")
+ >> (Statement::For{variable: variable, iterable: iterable, body: Box::new(statements)})
+));
+
 
 named!(upper_id, recognize!(do_parse!(
     verify!(call!(anychar), |c| c >= 'A' && c <= 'Z')
@@ -121,7 +223,7 @@ enum Declaration {
         id: String,
         unoverridable: bool,
         extends: Vec<String>,
-        body: Body,
+        body: Box<Vec<Declaration>>,
     },
     Function {
         id: String,
@@ -223,6 +325,7 @@ enum ParameterOption {
 }
 
 struct Parameter {
+    id: String,
     parameter_type: Type,
     option: ParameterOption,
 }
