@@ -26,13 +26,13 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
  >> tag!("->")
  >> instance: map!(opt!(tag!("%")), |o| o.is_some())
  >> body_or_return_type: alt_complete!(
-        map!(opt!(type_), |type_:Type| FunctionBodyOrReturnType::ReturnType(type_))
-      | map!(opt!(do_parse!(
+        map!(type_, |type_:Type| FunctionBodyOrReturnType::ReturnType(type_))
+      | map!(do_parse!(
             tag!("{")
          >> statements: many0!(function_statement)
          >> tag!("}")
          >> (statements)
-        )), |body:Body| FunctionBodyOrReturnType::Body(body)))
+        ), |body:Body| FunctionBodyOrReturnType::Body(body)))
  >> (Declaration::Function{id: id, parameters: parameters, instance: instance,
     return_type: match body_or_return_type {FunctionBodyOrReturnType::ReturnType(type_) => Some(type_), _ => None},
     body: match body_or_return_type {FunctionBodyOrReturnType::Body(body) => Some(body), _ => None}})
@@ -42,7 +42,7 @@ named!(variable_declaration<&[u8], Declaration>, do_parse!(
     mutable: map!(opt!(tag!("#")), |o| o.is_some())
  >> id: map_res!(call!(any_id), str_from_slice)
  >> value: alt_complete!(
-        map!(tag!("_"), Option::None)
+        map!(tag!("_"), { |_| Option::None })
       | map!(expression, Option::Some))
  >> (Declaration::Variable{id: id, mutable: mutable, value: value})
 ));
