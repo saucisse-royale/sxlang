@@ -31,7 +31,7 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
             tag!("{")
          >> statements: many0!(function_statement)
          >> tag!("}")
-         >> (statements)
+         >> (Box::new(statements))
         ), |body:Body| FunctionBodyOrReturnType::Body(body)))
  >> (Declaration::Function{id: id, parameters: parameters, instance: instance,
     return_type: match body_or_return_type {FunctionBodyOrReturnType::ReturnType(type_) => Some(type_), _ => None},
