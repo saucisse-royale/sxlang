@@ -11,6 +11,7 @@ use std::io::{self, Write, Read};
 use std::fs::File;
 use std::str;
 use nom::{anychar, alphanumeric};
+use types::*;
 
 #[allow(dead_code)]
 mod lexer;
@@ -43,13 +44,13 @@ fn main() {
 }
 
 fn compile(files: Vec<&str>) -> io::Result<()> {
-    let mut declarations = Vec::new();
+    let mut declarations : Vec<Declaration> = Vec::new();
 
     for string in files {
         println!("Parsing file {} ...", string);
         let mut bytes = Vec::new();
         File::open(string)?.read_to_end(&mut bytes)?;
-        let mut result = file(&bytes[..]).to_result().unwrap();
+        let mut result = parser::file(&bytes).to_result().unwrap();
         declarations.append(&mut result);
         println!("Parsed file {} successfully!", string);
     }

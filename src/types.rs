@@ -53,6 +53,7 @@ pub enum Expression {
     Class(String),
     Function(String),
     Variable(String),
+    UnknownId(String),
     This,
     ArrayLength,
     Method {
@@ -62,6 +63,10 @@ pub enum Expression {
     Field {
         base: Box<Expression>,
         field: String,
+    },
+    UnknownMethodOrField {
+        base: Box<Expression>,
+        data: String,
     },
     Array {
         base: Box<Expression>,
@@ -83,19 +88,20 @@ pub enum Expression {
 pub enum Literal {
     ArrayLiteral {
         array_type: Option<BaseType>,
-        body: ArrayLiteralBody,
+        body: Box<ArrayLiteralBody>,
     },
     StringLiteral(String),
     NumberLiteral {
+        negative: bool,
         number: String,
-        number_type: Primitive,
+        number_type: Option<Primitive>,
     },
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ArrayLiteralBody {
-    Count { count: u32, value: Option<String> },
-    Values(Vec<String>),
+    Count { count: Expression, value: Option<Expression> },
+    Values(Vec<Expression>),
 }
 
 pub type Expressions = Vec<Expression>;

@@ -2,18 +2,18 @@ use types::*;
 use nom::{self, anychar, alphanumeric, digit};
 
 
-named!(file<&[u8], Vec<Declaration> >, many0!(ws!(declaration)));
+named!(pub file<&[u8], Vec<Declaration> >, many0!(ws!(declaration)));
 
-named!(declaration<&[u8], Declaration>, alt!(type_declaration | function_declaration | variable_declaration));
+named!(declaration<&[u8], Declaration>, alt_complete!(type_declaration | function_declaration | variable_declaration));
 
-named!(pub type_declaration<&[u8], Declaration>, do_parse!(
+named!(type_declaration<&[u8], Declaration>, do_parse!(
     id: map_res!(call!(upper_id), String::from_utf8)
  >> tag!(":=")
  >> unoverridable: map!(opt!(tag!("#")), Option::is_some)
  >> tag!("$")
  >> extends: many0!(map_res!(call!(upper_id), String::from_utf8))
  >> tag!("{")
- >> body: many0!(alt!(function_declaration | variable_declaration))
+ >> body: many0!(alt_complete!(function_declaration | variable_declaration))
  >> tag!("}")
  >> (Declaration::Type{id: id, unoverridable: unoverridable, extends: extends, body: Box::new(body)})
 ));
@@ -24,7 +24,7 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
  >> parameters: many0!(parameter)
  >> tag!("->")
  >> instance: map!(opt!(tag!("%")), Option::is_some)
- >> body_or_return_type: alt!(
+ >> body_or_return_type: alt_complete!(
         map!(opt!(type_), |type_:Type| FunctionBodyOrReturnType::ReturnType(type_))
       | map!(opt!(do_parse!(
             tag!("{")
@@ -40,9 +40,9 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
 named!(variable_declaration<&[u8], Declaration>, do_parse!(
     mutable: map!(opt!(tag!("#")), Option::is_some)
  >> id: map_res!(call!(any_id), String::from_utf8)
- >> value: alt!(
-        map!(tag!("_"), |_| None)
-      | expression)
+ >> value: alt_complete!(
+        map!(tag!("_"), Option::None)
+      | map!(expression, Option::Some))
  >> (Declaration::Variable{id: id, mutable: mutable, value: value})
 ));
 
@@ -53,82 +53,99 @@ named!(parameter<&[u8], Parameter>, do_parse!(
  >> (Parameter{id: id.unwrap(), parameter_type: type_, option: match option {2 => ParameterOption::Clone, 1 => ParameterOption::Copy, _ => ParameterOption::Value}})
 ));
 
+named!(base_type<&[u8], BaseType>, alt_complete!(
+    map!(primitive_type, BaseType::Primitive)
+  | map!(map_res!(upper_id, String::from_utf8), BaseType::Class)
+));
+
 named!(type_<&[u8], Type>, do_parse!(
-    base_type: alt!(
-        // FIX: savapatrap la syntax Byte(truc), c'est pas un tuple-struct
-        map!(tag!("b"), |e| BaseType::Primitive(Primitive::Byte(e)))
-      | map!(tag!("i-"), |e| BaseType::Primitive(Primitive::Int16(e)))
-      | map!(tag!("i+"), |e| BaseType::Primitive(Primitive::Int64(e)))
-      | map!(tag!("i"), |e| BaseType::Primitive(Primitive::Int32(e)))
-      | map!(tag!("u-"), |e| BaseType::Primitive(Primitive::UInt16(e)))
-      | map!(tag!("u+"), |e| BaseType::Primitive(Primitive::UInt64(e)))
-      | map!(tag!("u"), |e| BaseType::Primitive(Primitive::UInt32(e)))
-      | map!(tag!("f+"), |e| BaseType::Primitive(Primitive::Float64(e)))
-      | map!(tag!("f"), |e| BaseType::Primitive(Primitive::Float32(e)))
-      | map!(upper_id, |e| BaseType::String(String::from_utf8(e)))
-    )
+    base_type: base_type
  >> array: map!(opt!(tag!("[]")), Option::is_some)
  >> (Type{base_type: base_type, array: array})
 ));
 
-named!(expression<&[u8], Expression>, alt!(
+named!(expression<&[u8], Expression>, alt_complete!(
     do_parse!(
         tag!("(")
-     >> expression: expression
+     >> expression_: expression
      >> tag!(")")
-     >> (expression)
+     >> (expression_)
     )
-    // TODO: add more expressions
+  | map!(literal, |e| Expression::Literal(e))
+  | map!(map_res!(any_id, String::from_utf8), Expression::UnknownId)
+  | map!(tag!("%"), |e| Expression::This)
+  | map!(tag!("$"), |e| Expression::ArrayLength)
+  | do_parse!(
+        expression_: expression
+     >> tag!(".")
+     >> data: map_res!(any_id, String::from_utf8)
+     >> (Expression::UnknownMethodOrField{base: Box::new(expression_), data: data})
+    )
+  | do_parse!(
+        expression_: expression
+     >> tag!("[")
+     >> index: expression
+     >> tag!("]")
+     >> (Expression::Array{base: Box::new(expression_), index: Box::new(index)})
+    )
+  | do_parse!(
+        expression_: expression
+     >> tag!("(")
+     >> parameters: expression_list
+     >> tag!(")")
+     >> (Expression::FunctionCall{base: Box::new(expression_), parameters: Box::new(parameters)})
+    )
+    // TODO: add all other expression cases
 ));
 
-named!(pub primitive_type<&[u8], Primitive>,
-    alt!(
+named!(expression_list<&[u8], Expressions>, separated_list_complete!(tag!(","), expression));
+
+named!(primitive_type<&[u8], Primitive>,
+    alt_complete!(
         tag!("b") => { |_| Primitive::Byte }
       | tag!("u-") => { |_| Primitive::UInt16 }
-      | tag!("u") => { |_| Primitive::UInt32 }
       | tag!("u+") => { |_| Primitive::UInt64 }
+      | tag!("u") => { |_| Primitive::UInt32 }
       | tag!("i-") => { |_| Primitive::Int16 }
-      | tag!("i") => { |_| Primitive::Int32 }
       | tag!("i+") => { |_| Primitive::Int64 }
-      | tag!("f") => { |_| Primitive::Float32 }
+      | tag!("i") => { |_| Primitive::Int32 }
       | tag!("f+") => { |_| Primitive::Float64 }
+      | tag!("f") => { |_| Primitive::Float32 }
     )
 );
 
-named!(pub literal<&[u8], Literal>, alt!(
-        do_parse!(
-            // number literal
-            // !! la regex est chiée ?? --> (\+ | -)? [0-9]+(\.[0-9]*)? NUMBER_SUFFIX?
-            number: map_res!(recognize!(do_parse!(
-                opt!(alt!(tag!("+") | tag!("-")))
-             >> call!(digit)
-             >> opt!(
-                do_parse!(
-                // optional floating point literal
-                    tag!(".")
-                 >> call!(digit)
-                 >> ()
+named!(literal<&[u8], Literal>, alt_complete!(
+    do_parse!(
+        negative: opt!(alt_complete!(tag!("-") => { |_| true } | tag!("+") => { |_| false }))
+     >> integer_part: map_res!(number_literal_value, String::from_utf8)
+     >> float_part: opt!(map_res!(do_parse!(
+            tag!(".")
+         >> digits: call!(digit)
+         >> (digits)
+        ), String::from_utf8))
+     >> suffix: opt!(primitive_type)
+     >> (Literal::NumberLiteral{negative: if let Some(b) = negative {b} else {false}, number: {integer_part.push_str(&float_part.unwrap_or(String::new())); integer_part}, number_type: suffix})
+    )
+  | map!(string_literal, Literal::StringLiteral)
+  | do_parse!(
+        type_: opt!(base_type)
+     >> tag!("[")
+     >> body: alt_complete!(
+            do_parse!(
+                count: expression
+             >> value: alt_complete!(
+                     tag!("_") => { |_| None }
+                   | expression => { |e| Some(e) }
                 )
-             )
-             >> ()
-            )), String::from_utf8)
-         >> number_type: opt!(call!(primitive_type))
-         >> (Literal::NumberLiteral {
-                number,
-                number_type: number_type.unwrap_or_else(|| {
-                    if number.find('.').is_some() {
-                        Primitive::Float32
-                    } else {
-                        Primitive::Int32 // does not handle yet u overflowing as i
-                    }
-                })
-            })
+             >> (ArrayLiteralBody::Count{count: count, value: value})
+            )
+          | expression_list => { |l| ArrayLiteralBody::Values(l) }
         )
-        // TODO: implement the rest
+     >> (Literal::ArrayLiteral{array_type: type_, body: Box::new(body)})
     )
-);
+));
 
-named!(function_statement<&[u8], Statement>, alt!(
+named!(function_statement<&[u8], Statement>, alt_complete!(
     if_statement
   | while_statement
   | for_statement
@@ -173,7 +190,7 @@ named!(if_statement<&[u8], Statement>, do_parse!(
      >> (IfBlock{condition: None, body: Box::new(statements)})
     ))
  >> (Statement::If(vec![IfBlock{
-        condition: Some(condition), 
+        condition: Some(condition),
         body: Box::new(statements)}]
             .into_iter()
             .chain(nextStatements.into_iter())
@@ -204,22 +221,45 @@ named!(for_statement<&[u8], Statement>, do_parse!(
 
 
 named!(
-    pub upper_id,
+    upper_id,
     recognize!(do_parse!(
-        verify!(call!(anychar), |c| c >= 'A' && c <= 'Z') >>
-            call!(alphanumeric) >> ()
+        verify!(call!(anychar), |c| c >= 'A' && c <= 'Z')
+     >> call!(alphanumeric)
+     >> ()
     ))
 );
 
 named!(
-    pub lower_id,
+    lower_id,
     recognize!(do_parse!(
-        verify!(call!(anychar), |c| c >= 'a' && c <= 'z') >>
-            call!(alphanumeric) >> ()
+        verify!(call!(anychar), |c| c >= 'a' && c <= 'z')
+     >> call!(alphanumeric)
+     >> ()
     ))
 );
 
-named!(pub any_id, recognize!(do_parse!(
-    call!(alphanumeric)
- >> ()
-)));
+named!(
+    any_id,
+    recognize!(do_parse!(
+        call!(alphanumeric)
+     >> ()
+    ))
+);
+
+named!(
+    number_literal_value,
+    alt_complete!(
+        recognize!(do_parse!(
+            verify!(call!(anychar), |c| c >= '1' && c <= '9')
+         >> call!(digit)
+         >> ()
+        ))
+      | recognize!(verify!(call!(anychar), |c| c == '0'))
+    )
+);
+
+named!(string_literal<&[u8], String>, delimited!(
+    tag!("\""),
+    map_res!(escaped!(call!(alphanumeric), '\\', is_a!("\"rtn\\")), String::from_utf8),
+    tag!("\"")
+));
