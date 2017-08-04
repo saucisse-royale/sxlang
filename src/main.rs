@@ -4,13 +4,11 @@ extern crate env_logger;
 extern crate log;
 #[macro_use]
 extern crate nom;
-extern crate regex;
 
 use clap::{App, Arg};
-use std::io::{self, Write, Read};
+use std::io::{self, Read};
 use std::fs::File;
 use std::str;
-use nom::{anychar, alphanumeric};
 use types::*;
 
 #[allow(dead_code)]
@@ -18,6 +16,7 @@ mod lexer;
 #[allow(dead_code)]
 mod token;
 mod parser;
+#[allow(dead_code)]
 mod types;
 
 mod test;

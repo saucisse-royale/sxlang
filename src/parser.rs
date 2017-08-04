@@ -1,5 +1,5 @@
 use types::*;
-use nom::{self, anychar, alphanumeric, digit};
+use nom::{anychar, alphanumeric, digit};
 use std::str;
 
 
@@ -33,9 +33,10 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
          >> tag!("}")
          >> (Box::new(statements))
         ), |body:Body| FunctionBodyOrReturnType::Body(body)))
- >> (Declaration::Function{id: id, parameters: parameters, instance: instance,
-    return_type: match body_or_return_type {FunctionBodyOrReturnType::ReturnType(type_) => Some(type_), _ => None},
-    body: match body_or_return_type {FunctionBodyOrReturnType::Body(body) => Some(body), _ => None}})
+ >> (match body_or_return_type {
+    FunctionBodyOrReturnType::ReturnType(type_) => Declaration::Function{id: id, parameters: parameters, instance: instance, return_type: Some(type_), body: None},
+    FunctionBodyOrReturnType::Body(body) => Declaration::Function{id: id, parameters: parameters, instance: instance, return_type: None, body: Some(body)},
+    })
 ));
 
 named!(variable_declaration<&[u8], Declaration>, do_parse!(
@@ -125,7 +126,7 @@ named!(literal<&[u8], Literal>, alt_complete!(
          >> (digits)
         ), str_from_slice))
      >> suffix: opt!(primitive_type)
-     >> (Literal::NumberLiteral{negative: if let Some(b) = negative {b} else {false}, number: {integer_part.push_str(&float_part.unwrap_or(String::new())); integer_part}, number_type: suffix})
+     >> (Literal::NumberLiteral{negative: if let Some(b) = negative {b} else {false}, number: match float_part {Some(f) => integer_part + &f, _ => integer_part}, number_type: suffix})
     )
   | map!(string_literal, Literal::StringLiteral)
   | do_parse!(
