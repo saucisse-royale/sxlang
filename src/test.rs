@@ -51,7 +51,7 @@ mod parser {
     #[test]
     fn test_type_declaration() {
         use parser::type_declaration;
-        let input = b"Chien := # $ Animale {}";
+        let input = b"Chien:=#$Animale{}";
 
         if let ::nom::IResult::Done(_,
                                     Declaration::Type {
@@ -62,7 +62,7 @@ mod parser {
                                     }) = type_declaration(input)
         {
             assert_eq!(id, "Chien".to_owned());
-            assert_eq!(unoverridable, false);
+            assert_eq!(unoverridable, true);
             assert_eq!(extends, vec!["Animale".to_owned()]);
             assert_eq!(body, Box::new(vec![]));
         } else {
