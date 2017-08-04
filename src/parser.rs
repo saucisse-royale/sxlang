@@ -1,5 +1,6 @@
 use types::*;
 use nom::{self, anychar, alphanumeric, digit};
+use std::str;
 
 
 named!(pub file<&[u8], Vec<Declaration> >, many0!(ws!(declaration)));
@@ -7,11 +8,11 @@ named!(pub file<&[u8], Vec<Declaration> >, many0!(ws!(declaration)));
 named!(declaration<&[u8], Declaration>, alt_complete!(type_declaration | function_declaration | variable_declaration));
 
 named!(type_declaration<&[u8], Declaration>, do_parse!(
-    id: map_res!(call!(upper_id), String::from_utf8)
+    id: map_res!(call!(upper_id), str_from_slice)
  >> tag!(":=")
- >> unoverridable: map!(opt!(tag!("#")), Option::is_some)
+ >> unoverridable: map!(opt!(tag!("#")), |o| o.is_some())
  >> tag!("$")
- >> extends: many0!(map_res!(call!(upper_id), String::from_utf8))
+ >> extends: many0!(map_res!(call!(upper_id), str_from_slice))
  >> tag!("{")
  >> body: many0!(alt_complete!(function_declaration | variable_declaration))
  >> tag!("}")
@@ -19,11 +20,11 @@ named!(type_declaration<&[u8], Declaration>, do_parse!(
 ));
 
 named!(function_declaration<&[u8], Declaration>, do_parse!(
-    id: map_res!(call!(lower_id), String::from_utf8)
+    id: map_res!(call!(lower_id), str_from_slice)
  >> tag!(":=")
  >> parameters: many0!(parameter)
  >> tag!("->")
- >> instance: map!(opt!(tag!("%")), Option::is_some)
+ >> instance: map!(opt!(tag!("%")), |o| o.is_some())
  >> body_or_return_type: alt_complete!(
         map!(opt!(type_), |type_:Type| FunctionBodyOrReturnType::ReturnType(type_))
       | map!(opt!(do_parse!(
@@ -38,8 +39,8 @@ named!(function_declaration<&[u8], Declaration>, do_parse!(
 ));
 
 named!(variable_declaration<&[u8], Declaration>, do_parse!(
-    mutable: map!(opt!(tag!("#")), Option::is_some)
- >> id: map_res!(call!(any_id), String::from_utf8)
+    mutable: map!(opt!(tag!("#")), |o| o.is_some())
+ >> id: map_res!(call!(any_id), str_from_slice)
  >> value: alt_complete!(
         map!(tag!("_"), Option::None)
       | map!(expression, Option::Some))
@@ -47,7 +48,7 @@ named!(variable_declaration<&[u8], Declaration>, do_parse!(
 ));
 
 named!(parameter<&[u8], Parameter>, do_parse!(
-    id: map!(any_id, String::from_utf8)
+    id: map!(any_id, str_from_slice)
  >> option: map!(many_m_n!(0, 2, tag!("~")), |v| v.len())
  >> type_: type_
  >> (Parameter{id: id.unwrap(), parameter_type: type_, option: match option {2 => ParameterOption::Clone, 1 => ParameterOption::Copy, _ => ParameterOption::Value}})
@@ -55,12 +56,12 @@ named!(parameter<&[u8], Parameter>, do_parse!(
 
 named!(base_type<&[u8], BaseType>, alt_complete!(
     map!(primitive_type, BaseType::Primitive)
-  | map!(map_res!(upper_id, String::from_utf8), BaseType::Class)
+  | map!(map_res!(upper_id, str_from_slice), BaseType::Class)
 ));
 
 named!(type_<&[u8], Type>, do_parse!(
     base_type: base_type
- >> array: map!(opt!(tag!("[]")), Option::is_some)
+ >> array: map!(opt!(tag!("[]")), |o| o.is_some())
  >> (Type{base_type: base_type, array: array})
 ));
 
@@ -72,13 +73,13 @@ named!(expression<&[u8], Expression>, alt_complete!(
      >> (expression_)
     )
   | map!(literal, |e| Expression::Literal(e))
-  | map!(map_res!(any_id, String::from_utf8), Expression::UnknownId)
+  | map!(map_res!(any_id, str_from_slice), Expression::UnknownId)
   | map!(tag!("%"), |e| Expression::This)
   | map!(tag!("$"), |e| Expression::ArrayLength)
   | do_parse!(
         expression_: expression
      >> tag!(".")
-     >> data: map_res!(any_id, String::from_utf8)
+     >> data: map_res!(any_id, str_from_slice)
      >> (Expression::UnknownMethodOrField{base: Box::new(expression_), data: data})
     )
   | do_parse!(
@@ -117,12 +118,12 @@ named!(primitive_type<&[u8], Primitive>,
 named!(literal<&[u8], Literal>, alt_complete!(
     do_parse!(
         negative: opt!(alt_complete!(tag!("-") => { |_| true } | tag!("+") => { |_| false }))
-     >> integer_part: map_res!(number_literal_value, String::from_utf8)
+     >> integer_part: map_res!(number_literal_value, str_from_slice)
      >> float_part: opt!(map_res!(do_parse!(
             tag!(".")
          >> digits: call!(digit)
          >> (digits)
-        ), String::from_utf8))
+        ), str_from_slice))
      >> suffix: opt!(primitive_type)
      >> (Literal::NumberLiteral{negative: if let Some(b) = negative {b} else {false}, number: {integer_part.push_str(&float_part.unwrap_or(String::new())); integer_part}, number_type: suffix})
     )
@@ -210,13 +211,13 @@ named!(while_statement<&[u8], Statement>, do_parse!(
 
 named!(for_statement<&[u8], Statement>, do_parse!(
     tag!("@")
- >> variable: map!(any_id, String::from_utf8)
+ >> variable: map_res!(any_id, str_from_slice)
  >> tag!(":")
  >> iterable: expression
  >> tag!("{")
  >> statements: many0!(function_statement)
  >> tag!("}")
- >> (Statement::For{variable: variable.unwrap(), iterable: iterable, body: Box::new(statements)})
+ >> (Statement::For{variable: variable, iterable: iterable, body: Box::new(statements)})
 ));
 
 
@@ -260,6 +261,10 @@ named!(
 
 named!(string_literal<&[u8], String>, delimited!(
     tag!("\""),
-    map_res!(escaped!(call!(alphanumeric), '\\', is_a!("\"rtn\\")), String::from_utf8),
+    map_res!(escaped!(call!(alphanumeric), '\\', is_a!("\"rtn\\")), str_from_slice),
     tag!("\"")
 ));
+
+fn str_from_slice(slice: &[u8]) -> Result<String, str::Utf8Error> {
+    str::from_utf8(slice).and_then(|s| Ok(s.to_owned()))
+}
