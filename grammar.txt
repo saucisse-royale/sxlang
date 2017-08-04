@@ -1,0 +1,133 @@
+grammar sxlang;
+
+file : (fileDeclaration | NEWLINE)* EOF;
+
+fileDeclaration :
+typeDeclaration
+| functionDeclaration
+| variableDeclaration;
+
+typeDeclaration :
+classId ':=' '#'? '$' '{' (functionDeclaration | variableDeclaration | NEWLINE)* '}';
+
+functionDeclaration :
+functionId ':=' parameter* '->' '%'? (('{' (functionStatement | NEWLINE)* '}') | type);
+
+variableDeclaration :
+'#'? variableId ':=' ('_' | expression);
+
+functionStatement :
+expression '?' '{' (functionStatement | NEWLINE)* '}' (expression '?:' '{' (functionStatement | NEWLINE)* '}')* ':' '{' (functionStatement | NEWLINE)* '}' NEWLINE # If
+| '@' expression '{' (functionStatement | NEWLINE)* '}' NEWLINE # While
+| '@' variableId ':' expression '{' (functionStatement | NEWLINE)* '}' NEWLINE # For
+| '§' expression NEWLINE # Return
+| '<'+ NEWLINE # Continue
+| '>'+ NEWLINE # Break
+| expression NEWLINE # Expr
+;
+
+expressionList :
+expression (',' expression)*;
+
+expression :
+'(' expression ')' # ExprParenthesis
+| literal # ExprLiteral
+| classId # ExprClass
+| functionId # ExprFunction
+| variableId # ExprVariable
+| '%' # ExprThis
+| '$' # ExprArrayLength
+| expression '.' functionId # ExprMethod
+| expression '.' variableId # ExprField
+| expression '[' expression ']' # ExprArray
+| expression '(' expressionList? ')' # ExprFunctionCall
+| expression ('++' | '--') # ExprPostUnaryOp
+| ('+'|'-'|'++'|'--') expression # ExprPreUnaryOp
+| ('!') expression # ExprPreUnaryOp
+| expression ('*'|'/'|'%') expression # ExprBinaryOp
+| expression ('+'|'-') expression # ExprBinaryOp
+| expression ('<' '<' | '>' '>' '>' | '>' '>') expression # ExprBinaryOp
+| expression ('<=' | '>=' | '>' | '<') expression # ExprBinaryOp
+| expression ('==' | '!=') expression # ExprBinaryOp
+| expression '&' expression # ExprBinaryOp
+| expression '^' expression # ExprBinaryOp
+| expression '|' expression # ExprBinaryOp
+| expression '&&' expression # ExprBinaryOp
+| expression '||' expression # ExprBinaryOp
+| <assoc=right> expression
+  (   '='
+  |   '+='
+  |   '-='
+  |   '*='
+  |   '/='
+  |   '&='
+  |   '|='
+  |   '^='
+  |   '>>='
+  |   '>>>='
+  |   '<<='
+  |   '%='
+  )
+  expression  # ExprBinaryOp
+;
+
+literal :
+arrayLiteral
+| STRING_LITERAL
+| NUMBER_LITERAL;
+
+arrayLiteral :
+type? arrayLiteralBody;
+
+arrayLiteralBody :
+'[' expression (expression | '_') ']'
+| '[' expressionList ']';
+
+STRING_LITERAL :
+'"' (~["\\] | ('\\' [tnr"\\]))* '"';
+
+NUMBER_LITERAL :
+('0' | [1-9]+) NUMBER_SUFFIX?;
+
+fragment
+NUMBER_SUFFIX :
+'b' | 'u-' | 'u' | 'u+' | 'i-' | 'i' | 'i+' | 'f-' | 'f' | 'f+';
+
+parameter :
+variableId ('~~' type | '~' type | type);
+
+type :
+numberType | classId;
+
+classId:
+MAJ_ID;
+
+functionId :
+NUMBER_TYPE_ALPHANUMERIC | MIN_ID;
+
+variableId :
+NUMBER_TYPE_ALPHANUMERIC | MAJ_ID | MIN_ID;
+
+numberType :
+NUMBER_TYPE_ALPHANUMERIC | NUMBER_TYPE;
+
+NUMBER_TYPE_ALPHANUMERIC :
+'b' | 'i' | 'u' | 'f';
+
+NUMBER_TYPE :
+NUMBER_TYPE_ALPHANUMERIC | 'b' | 'i-' | 'i' | 'i+' | 'u-' | 'u' | 'u+' | 'f-' | 'f' | 'f+';
+
+MAJ_ID:
+[A-Z]([a-z0-9A-Z]*);
+
+MIN_ID:
+[a-z]([a-z0-9A-Z]*);
+
+
+WS:  [ \t]+ -> skip;
+
+COMMENT:   '/*' .*? '*/' -> channel(HIDDEN);
+
+LINE_COMMENT:   '//' ~[\r\n]* -> channel(HIDDEN);
+
+NEWLINE: [\r\n]+;
