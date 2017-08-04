@@ -53,5 +53,10 @@ fn compile(files: Vec<&str>) -> io::Result<()> {
         declarations.append(&mut result);
         println!("Parsed file {} successfully!", string);
     }
+
+    for declaration in declarations.iter() {
+        println!("{:?}", declaration);
+    }
+
     Ok(())
 }
