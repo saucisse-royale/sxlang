@@ -7,7 +7,7 @@ named!(pub file<&[u8], Vec<Declaration> >, many0!(ws!(declaration)));
 
 named!(declaration<&[u8], Declaration>, alt_complete!(type_declaration | function_declaration | variable_declaration));
 
-named!(type_declaration<&[u8], Declaration>, do_parse!(
+named!(pub type_declaration<&[u8], Declaration>, do_parse!(
     id: map_res!(call!(upper_id), str_from_slice)
  >> tag!(":=")
  >> unoverridable: map!(opt!(tag!("#")), |o| o.is_some())
@@ -102,7 +102,7 @@ named!(expression<&[u8], Expression>, alt_complete!(
 
 named!(expression_list<&[u8], Expressions>, separated_list_complete!(tag!(","), expression));
 
-named!(primitive_type<&[u8], Primitive>,
+named!(pub primitive_type<&[u8], Primitive>,
     alt_complete!(
         tag!("b") => { |_| Primitive::Byte }
       | tag!("u-") => { |_| Primitive::UInt16 }
@@ -223,7 +223,7 @@ named!(for_statement<&[u8], Statement>, do_parse!(
 
 
 named!(
-    upper_id,
+    pub upper_id,
     recognize!(do_parse!(
         verify!(call!(anychar), |c| c >= 'A' && c <= 'Z')
      >> call!(alphanumeric)
@@ -232,7 +232,7 @@ named!(
 );
 
 named!(
-    lower_id,
+    pub lower_id,
     recognize!(do_parse!(
         verify!(call!(anychar), |c| c >= 'a' && c <= 'z')
      >> call!(alphanumeric)
@@ -241,7 +241,7 @@ named!(
 );
 
 named!(
-    any_id,
+    pub any_id,
     recognize!(do_parse!(
         call!(alphanumeric)
      >> ()
@@ -252,11 +252,9 @@ named!(
     number_literal_value,
     alt_complete!(
         recognize!(do_parse!(
-            verify!(call!(anychar), |c| c >= '1' && c <= '9')
-         >> call!(digit)
-         >> ()
-        ))
-      | recognize!(verify!(call!(anychar), |c| c == '0'))
+            verify!(call!(anychar), |c| c >= '1' && c <= '9') >>
+                call!(digit) >> ()
+        )) | recognize!(verify!(call!(anychar), |c| c == '0'))
     )
 );
 

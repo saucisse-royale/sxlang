@@ -4,17 +4,20 @@ mod parser {
 
     #[test]
     fn test_any_id() {
+        use parser::any_id;
         assert!(any_id(b"foobar").is_done());
     }
 
     #[test]
     fn test_lower_id() {
+        use parser::lower_id;
         assert!(lower_id(b"fOobAr").is_done());
         assert!(lower_id(b"Foobar").is_err());
     }
 
     #[test]
     fn test_upper_id() {
+        use parser::upper_id;
         assert!(upper_id(b"FOobAr").is_done());
         assert!(upper_id(b"fOobAr").is_err());
     }
@@ -22,7 +25,8 @@ mod parser {
     #[test]
     fn test_primitive_type() {
         use self::Primitive::*;
-        let mut res: Vec<_>;
+        use parser::primitive_type;
+        let mut res = vec![];
         let mut input = &b"bu+uu-i+ii-ff+ccf"[..];
         while let ::nom::IResult::Done(r, ty) = primitive_type(input) {
             res.push(ty);
@@ -46,6 +50,7 @@ mod parser {
 
     #[test]
     fn test_type_declaration() {
+        use parser::type_declaration;
         let input = b"Chien := # $ Animale {}";
 
         if let ::nom::IResult::Done(_,
