@@ -43,8 +43,8 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IfBlock {
-    condition: Option<Expression>,
-    body: Body,
+    pub condition: Option<Expression>,
+    pub body: Body,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -116,15 +116,15 @@ pub enum ParameterOption {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parameter {
-    id: String,
-    parameter_type: Type,
-    option: ParameterOption,
+    pub id: String,
+    pub parameter_type: Type,
+    pub option: ParameterOption,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Type {
-    base_type: BaseType,
-    array: bool,
+    pub base_type: BaseType,
+    pub array: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
