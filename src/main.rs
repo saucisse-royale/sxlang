@@ -45,8 +45,8 @@ fn compile(files: Vec<&str>) -> io::Result<()> {
         println!("Parsing file {} ...", string);
         let mut bytes = Vec::new();
         File::open(string)?.read_to_end(&mut bytes)?;
-        let mut result = parser::file(&bytes).to_result().unwrap();
-        declarations.append(&mut result);
+        let mut result = parser::file(&bytes);
+        declarations.append(&mut result.to_result().unwrap());
         println!("Parsed file {} successfully!", string);
     }
 

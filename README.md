@@ -2,6 +2,13 @@
 
 The official interpreter for the Ŝlang language. Written in Rust.
 
+# TODO
+- Use `escaped_transform`
+- Add block comments support
+- Add more tests
+- Start type inference work
+- ... eventually use llvm builder
+
 # Spécification de sxlang
 ```
 Déclaration de variable

@@ -23,18 +23,18 @@ named!(newlines1<&[u8], ()>, sp!(do_parse!(
  >> ()
 )));
 
-named!(pub file<&[u8], Vec<Declaration> >, sp!(ws!(many0!(declaration))));
+named!(pub file<&[u8], Vec<Declaration> >, sp!(separated_list_complete!(newlines1, declaration)));
 
 named!(declaration<&[u8], Declaration>, sp!(delimited!(newlines, alt_complete!(type_declaration | function_declaration | variable_declaration), newlines)));
 
-named!(pub type_declaration<&[u8], Declaration>, sp!(do_parse!(
+named!(type_declaration<&[u8], Declaration>, sp!(do_parse!(
     id: map_res!(call!(upper_id), str_from_slice)
  >> tag!(":=")
  >> unoverridable: map!(opt!(tag!("#")), |o| o.is_some())
  >> tag!("$")
  >> extends: many0!(map_res!(call!(upper_id), str_from_slice))
  >> tag!("{")
- >> body: delimited!(newlines, many0!(alt_complete!(function_declaration | variable_declaration)), newlines)
+ >> body: delimited!(newlines, separated_list_complete!(newlines1, alt_complete!(function_declaration | variable_declaration)), newlines)
  >> tag!("}")
  >> (Declaration::Type{id: id, unoverridable: unoverridable, extends: extends, body: Box::new(body)})
 )));
@@ -49,7 +49,7 @@ named!(function_declaration<&[u8], Declaration>, sp!(delimited!(newlines,do_pars
         map!(type_, |type_:Type| FunctionBodyOrReturnType::ReturnType(type_))
       | map!(do_parse!(
             tag!("{")
-         >> statements: delimited!(newlines, many0!(function_statement), newlines)
+         >> statements: function_statements
          >> tag!("}")
          >> (Box::new(statements))
         ), |body:Body| FunctionBodyOrReturnType::Body(body)))
@@ -88,7 +88,7 @@ named!(type_<&[u8], Type>, sp!(do_parse!(
 
 named!(expression_list<&[u8], Expressions>, sp!(separated_list_complete!(tag!(","), expression)));
 
-named!(pub primitive_type<&[u8], Primitive>,
+named!(primitive_type<&[u8], Primitive>,
     alt_complete!(
         tag!("b") => { |_| Primitive::Byte }
       | tag!("u-") => { |_| Primitive::UInt16 }
@@ -133,7 +133,7 @@ named!(literal<&[u8], Literal>, alt_complete!(
     )
 ));
 
-named!(function_statement<&[u8], Statement>, sp!(delimited!(newlines, alt_complete!(
+named!(function_statement<&[u8], Statement>, sp!(alt_complete!(
     if_statement
   | while_statement
   | for_statement
@@ -154,29 +154,33 @@ named!(function_statement<&[u8], Statement>, sp!(delimited!(newlines, alt_comple
         expression: expression
      >> (Statement::Expression(expression))
     )
-), newlines1)));
+)));
+
+named!(function_statements<&[u8], Vec<Statement> >,
+    sp!(delimited!(newlines, separated_list_complete!(newlines1, function_statement), newlines))
+);
 
 named!(if_statement<&[u8], Statement>, sp!(do_parse!(
     condition: expression
  >> tag!("?")
  >> tag!("{")
- >> statements: delimited!(newlines, many0!(function_statement), newlines)
+ >> statements: function_statements
  >> tag!("}")
- >> next_statements: many0!(do_parse!(
+ >> next_statements: many0!(sp!(do_parse!(
         condition: expression
      >> tag!("?:")
      >> tag!("{")
-     >> statements: delimited!(newlines, many0!(function_statement), newlines)
+     >> statements: function_statements
      >> tag!("}")
      >> (IfBlock{condition: Some(condition), body: Box::new(statements)})
-    ))
- >> end: opt!(do_parse!(
+    )))
+ >> end: opt!(sp!(do_parse!(
         tag!(":")
      >> tag!("{")
-     >> statements: delimited!(newlines, many0!(function_statement), newlines)
+     >> statements: function_statements
      >> tag!("}")
      >> (IfBlock{condition: None, body: Box::new(statements)})
-    ))
+    )))
  >> (Statement::If(vec![IfBlock{
         condition: Some(condition),
         body: Box::new(statements)}]
@@ -191,7 +195,7 @@ named!(while_statement<&[u8], Statement>, sp!(do_parse!(
     tag!("@")
  >> condition: expression
  >> tag!("{")
- >> statements: delimited!(newlines, many0!(function_statement), newlines)
+ >> statements: function_statements
  >> tag!("}")
  >> (Statement::While{condition: condition, body: Box::new(statements)})
 )));
@@ -202,32 +206,32 @@ named!(for_statement<&[u8], Statement>, sp!(do_parse!(
  >> tag!(":")
  >> iterable: expression
  >> tag!("{")
- >> statements: delimited!(newlines, many0!(function_statement), newlines)
+ >> statements: function_statements
  >> tag!("}")
  >> (Statement::For{variable: variable, iterable: iterable, body: Box::new(statements)})
 )));
 
 
 named!(
-    pub upper_id,
+    upper_id,
     recognize!(do_parse!(
         verify!(call!(anychar), |c| c >= 'A' && c <= 'Z')
-     >> call!(alphanumeric)
+     >> opt!(call!(alphanumeric))
      >> ()
     ))
 );
 
 named!(
-    pub lower_id,
+    lower_id,
     recognize!(do_parse!(
         verify!(call!(anychar), |c| c >= 'a' && c <= 'z')
-     >> call!(alphanumeric)
+     >> opt!(call!(alphanumeric))
      >> ()
     ))
 );
 
 named!(
-    pub any_id,
+    any_id,
     recognize!(do_parse!(
         call!(alphanumeric)
      >> ()

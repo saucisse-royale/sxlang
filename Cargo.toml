@@ -7,5 +7,8 @@ authors = ["Maitre Van Diest", "Delthas", "Emersion"]
 clap = "2.25.0"
 env_logger = "0.4.3"
 log = "0.3.8"
-nom = "^3.2"
 regex = "0.2"
+
+[dependencies.nom]
+version = "^3.2"
+features = ["verbose-errors"]
