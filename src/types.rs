@@ -1,10 +1,4 @@
 #[derive(Debug, PartialEq, Eq)]
-pub enum FunctionBodyOrReturnType {
-    Body(Body),
-    ReturnType(Type),
-}
-
-#[derive(Debug, PartialEq, Eq)]
 pub enum Declaration {
     Type {
         id: String,

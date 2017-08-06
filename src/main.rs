@@ -11,10 +11,6 @@ use std::fs::File;
 use std::str;
 use types::*;
 
-#[allow(dead_code)]
-mod lexer;
-#[allow(dead_code)]
-mod token;
 mod parser;
 #[allow(dead_code)]
 mod types;
