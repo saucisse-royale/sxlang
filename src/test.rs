@@ -51,7 +51,7 @@ mod parser {
     #[test]
     fn test_type_declaration() {
         use parser::type_declaration;
-        let input = b"Chien:=#$Animale{}";
+        let input = b"Chien := # $ Animale {}";
 
         if let ::nom::IResult::Done(_,
                                     Declaration::Type {
