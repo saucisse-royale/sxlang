@@ -1,106 +1,132 @@
 # sxlang
 
-The official interpreter for the Ŝlang language. Written in Rust.
+The official compiler for the Ŝlang language.
 
-# TODO
-- Use `escaped_transform`
-- Add block comments support
-- Add more tests
-- Start type inference work
-- ... eventually use llvm builder
+The current (Java) compiler is located at [java/](java/).
 
-# Spécification de sxlang
+The old (Rust, uncomplete) compiler is located at [rust/](rust/).
+
+# Usage
+
+Compile your sxlang files into a native object file:
 ```
-Déclaration de variable
-x := _
-Initialisation de variable
-x := <expression>
+sxlang main.sx aux.sx
+```
 
-Blocs de code
+Then link the native object file into an executable file:
+- On Windows (in a "VS2015 x64 Native Tools Command Prompt"):
+```
+link ucrt.lib msvcrt.lib Ws2_32.lib sxlang.o
+```
+- On Linux:
+```
+ld sxlang.o -lc
+```
+
+# Todo
+- [ ] Class constructors
+- [ ] Static initializers
+- [ ] Dynamic dispatch
+- [ ] Char literals
+- [ ] String literals
+- [ ] String literals unicode escapes
+- [ ] Type inference
+- [ ] Static array analysis -> alloca
+- [ ] Generics
+- [ ] Array slices
+- [ ] Iterables
+- [ ] Operator override
+
+# Specification
+
+Variable declaration
+x :: <type> := _
+Variable initialisation
+x :: <type> := <expression>
+
+Code block
 { }
 
-Commentaires
+Comments
 //
 /* */
 
-Flux de contrôle
-(expression booléenne) ? {} (expression booléenne) ?: {} : {}
+Control flow
+(expression) ? {} (expression) ?: {} : {}
 
 Boucles
-@ (expression booléenne) {}
-@ <identifiant> : <iterable> {}
+@ (expression) {}
+@ <id> : <iterable> {}
 
 Break, Continue, Return
-Break : >, Break deux boucles : >>, ...
-Continue : <, Continuedeux boucles : <<, ...
-Return : §
+Break: >, Break two loops: >>, ...
+Continue: <, Continue two loops: <<, ...
+Return: §
 
-Fonctions
+Functions
 x := a i b i -> {
     
 }
-si c'est une méthode (pas statique) d'une classe :
+Method (not static)
 x := a i b i ->% {
     
 }
-et dans ce cas le "this" est % : %.a correspond à this.a en Java
+"this" is "%" (%.a corresponds to e.g. this.a in Java)
 
 Allocation
-Tableaux : taille compile time -> pile ; taille pas compile time
-Classes : si final et hérite de rien -> pile ; sinon tas
-Le reste : pile
+Arrays: malloc (heap)
+Classes: if final, no extends -> stack ; else heap
+Everything else: stack
 
-Passage
-Tout est passé par pointeur sauf les primitifs, mais on peut copy et clone avec ~a et ~~a. On peut clone et copy dans les paramètres de fonction, etc.
+Parameters
+By default: by pointer, including primitives.
+Parameters may be shallow copied with ~a, deep copied with ~~a.
 
-Primitifs
+Primitives
 b (1 byte)
 i- (signed int 2 bytes), i (signed int 4 bytes), i+ (signed int 8 bytes)
 u- (unsigned int 2 bytes), u (unsigned int 4 bytes), u+ (unsigned int 8 bytes)
 f (float 4 bytes), f+ (float 8 bytes)
 
-Tableaux
-Le type se note i[]
-L'expression d'un tableau c'est [<taille> <valeur d'init>] ou [el1, el2, ...] pour l'init direct, on peut préciser le type avec type[...] par exemple i[5 3] ; i[3, 2, 3], et on peut ne pas init avec i[5 _]
+Arrays
+e.g. i[]
+Array initializer: <type>[<size> <value>] or <type>[el1, el2, ...]
+<value> may be _ -> no initialization
 i[3]
-i[2..5] renvoie une portion du tableau (pas une copie)
-i[..2], i[0..] valide
-i[2..$-2] valide
+i[2..5] slice of array (not yet implemented)
+i[..2], i[0..]
+i[2..$-2]
 
-Expressions littérales
+Litterals
 32 32i- 32i+ 32b 32u 32u- 32u+ 32.0f 32.45454f+
-Faire attention à 1f+ + 3
+"ta m7re !qu swag \"\r\n \t \u200b \" \\ sava"
 
-Chaînes de caractères 
-"ta m7re !qu swag \"\r\n \t \u200b \" \\ sava"  sont des objets string
-
-Immutabilité
-Toutes les lvalue sont immutables, sauf contre-indiqué par #, e.g. #x := 5. L'immutabilité est transitive et valide pour toute la durée de vie du truc (pas seulement pour le scope).
+Immutability
+All lvalues are immutable by default, except if specified with #, e.g. #x ::i := 5
 
 Classes
-<nom> := ${
+<id> := ${
 }
-si c final : <nom> := #$ {}
-si on extend les interfaces truc et troc : <nom> := $truc troc{}
+if final: <id> := #$ {}
+extending a and b: <id> := a b{}
 
 Interfaces
-<nom> := #${
-    // que des fonctions du style :
+<id> := #${
+    // only prototypes
     f := a i b i -> sava
-    // sava est le type de retour
 }
 
-Opérateurs
-+ ++ += - -- -= * *= / /= % %= [] <opérateur itération>
-peuvent être overridés
+Operators
++ ++ += - -- -= * *= / /= % %= [] <iter op>
+may be overriden
 
-EXEMPLE: L'Algorithme D'Euclide
-
-f := a i b i -> {
-      b == 0 ? {
-        § a
-     } : {
-        § f(b, a%b)   
-    }
+EXAMPLE: "L'Algorithme D'Euclide"
+```
+f := a i b i -> i {
+  b == 0 ? {
+    § a
+  } : {
+    § f(b, a%b)   
+  }
 }
 ```
