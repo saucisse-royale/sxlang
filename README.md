@@ -39,6 +39,7 @@ ld sxlang.o -lc
 
 # Specification
 
+```
 Variable declaration
 x :: <type> := _
 Variable initialisation
@@ -119,6 +120,7 @@ Interfaces
 Operators
 + ++ += - -- -= * *= / /= % %= [] <iter op>
 may be overriden
+```
 
 EXAMPLE: "L'Algorithme D'Euclide"
 ```
